@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	"github.com/desertbit/grumble"
@@ -75,6 +76,8 @@ func runList(ctx *grumble.Context) (err error) {
 		if err != nil {
 			return
 		}
+
+		sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
 
 		ts := "[ "
 		for i, t := range tags {
