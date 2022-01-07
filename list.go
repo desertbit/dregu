@@ -6,7 +6,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -16,6 +15,8 @@ import (
 )
 
 const (
+	argListName = "name"
+
 	flagListPrefix = "prefix"
 )
 
@@ -25,8 +26,10 @@ var cmdList = &grumble.Command{
 	Flags: func(f *grumble.Flags) {
 		f.BoolL(flagListPrefix, false, "all repositories are listed whose name contains the given name as a prefix")
 	},
-	AllowArgs: true,
-	Run:       runList,
+	Args: func(a *grumble.Args) {
+		a.String(argListName, "the name of the repository")
+	},
+	Run: runList,
 }
 
 func init() {
@@ -35,10 +38,7 @@ func init() {
 
 func runList(ctx *grumble.Context) (err error) {
 	// Check args.
-	if len(ctx.Args) != 1 {
-		return errors.New("invalid arguments, see help")
-	}
-	repoName := ctx.Args[0]
+	repoName := ctx.Args.String(argListName)
 	prefix := ctx.Flags.Bool(flagListPrefix)
 
 	// Query the repositories.

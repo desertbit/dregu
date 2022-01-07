@@ -52,7 +52,7 @@ var App = grumble.New(&grumble.Config{
 var reg *registry.Registry
 
 func main() {
-	App.OnInit(func(a *grumble.App, f grumble.FlagMap) error {
+	App.OnInit(func(a *grumble.App, f grumble.FlagMap) (err error) {
 		// Check JSON logging.
 		if !f.Bool(flagJSON) {
 			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -66,7 +66,11 @@ func main() {
 		}
 
 		// Connect to the registry.
-		err := connect(f.String(flagDockerConfig), f.String(flagRegistry), f.String(flagUser), f.String(flagPassword))
+		if f.String(flagDockerConfig) != "" {
+			reg, err = connectFromConfig(f.String(flagRegistry), f.String(flagDockerConfig))
+		} else {
+			reg, err = connectWithCreds(f.String(flagRegistry), f.String(flagUser), f.String(flagPassword))
+		}
 		if err != nil {
 			return err
 		}
@@ -77,25 +81,36 @@ func main() {
 	grumble.Main(App)
 }
 
-func connect(dockerConfigFP, registryHost, user, password string) (err error) {
+func connectFromConfig(registryHost, configFP string) (reg *registry.Registry, err error) {
+	opts := registry.Options{
+		Logf: func(format string, args ...interface{}) {},
+	}
+
+	// Try to parse the credentials from the docker config.
+	opts.Username, opts.Password, err = parseCredentialsFromDockerConfig(configFP, registryHost)
+	if err != nil {
+		log.Debug().Err(err).Msg("parse credentials from docker config")
+	}
+
+	return connect(registryHost, opts)
+}
+
+func connectWithCreds(registryHost, user, password string) (reg *registry.Registry, err error) {
 	opts := registry.Options{
 		Username: user,
 		Password: password,
 		Logf:     func(format string, args ...interface{}) {},
 	}
 
-	// Try to parse the credentials from the docker config.
-	u, p, err := ParesCredentialsFromDockerConfig(dockerConfigFP, registryHost)
-	if err != nil {
-		log.Debug().Err(err).Msg("parse credentials from docker config")
-	} else {
-		opts.Username, opts.Password = u, p
-	}
+	return connect(registryHost, opts)
+}
 
+func connect(registryHost string, opts registry.Options) (reg *registry.Registry, err error) {
 	// Prepare registry client using the options.
 	reg, err = registry.NewCustom("https://"+registryHost, opts)
 	if err != nil {
-		return fmt.Errorf("could not connect to docker registry at https://%s: %v", registryHost, err)
+		err = fmt.Errorf("could not connect to docker registry at https://%s: %v", registryHost, err)
+		return
 	}
 
 	return

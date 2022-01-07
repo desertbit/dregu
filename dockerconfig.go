@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
-
-	cos "git.wahtari.m/nlab/common/pkg/os"
 )
 
 type DockerConfig struct {
@@ -20,13 +18,7 @@ type DockerConfig struct {
 	HTTPHeaders map[string]string   `json:"HttpHeaders"`
 }
 
-func ParesCredentialsFromDockerConfig(filePath, registry string) (user, password string, err error) {
-	// Check, if a ~/.docker/config.json exists, containing the auth token.
-	ex, err := cos.Exists(filePath)
-	if err != nil || !ex {
-		return
-	}
-
+func parseCredentialsFromDockerConfig(filePath, registry string) (user, password string, err error) {
 	// Read the file data.
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
